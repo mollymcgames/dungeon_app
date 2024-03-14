@@ -10,7 +10,7 @@ def hello_world():
 @app.route('/get_dungeon_data', methods=['GET'])
 def get_dungeon_data():
     # Load dungeon data (adjust the file path if needed)
-    data = np.load('/path/to/dungeons_dataset.npy')
+    data = np.load('dungeons_dataset.npy')
 
     # Select the first dungeon
     selected_dungeon = data[0]
@@ -24,7 +24,7 @@ def get_dungeon_data():
 @app.route('/get_room_data', methods=['GET'])
 def get_room_data():
     # Load room data (adjust the file path if needed)
-    room_data = np.load('/path/to/rooms_dataset.npy')
+    room_data = np.load('rooms_dataset.npy')
 
     # Select the first room
     selected_room = room_data[0]
