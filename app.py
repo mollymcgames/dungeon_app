@@ -9,8 +9,8 @@ def hello_world():
 
 @app.route('/get_dungeon_data', methods=['GET'])
 def get_dungeon_data():
-    # Load dungeon data
-    data = np.load('dungeons_dataset.npy')
+    # Load dungeon data (adjust the file path if needed)
+    data = np.load('/path/to/dungeons_dataset.npy')
 
     # Select the first dungeon
     selected_dungeon = data[0]
@@ -23,8 +23,8 @@ def get_dungeon_data():
 
 @app.route('/get_room_data', methods=['GET'])
 def get_room_data():
-    # Load roomd data
-    room_data = np.load('rooms_dataset.npy')
+    # Load room data (adjust the file path if needed)
+    room_data = np.load('/path/to/rooms_dataset.npy')
 
     # Select the first room
     selected_room = room_data[0]
@@ -35,4 +35,5 @@ def get_room_data():
     return jsonify(room_list)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Run the app on the server's publicly available IP address, on port 8080
+    app.run(host='0.0.0.0', port=8080)
