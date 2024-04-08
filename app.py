@@ -33,7 +33,7 @@ app = Flask(__name__)
 
 
 # Define a route to generate dungeon data
-@app.route('/output', methods=['GET'])
+@app.route('/gan_dungeon', methods=['GET'])
 def generate_dungeon_data():
 
     # Load the Keras model
