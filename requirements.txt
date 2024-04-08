@@ -1,3 +1,5 @@
 gunicorn
 flask
 numpy
+tensorflow==2.15.0
+keras==2.15.0
