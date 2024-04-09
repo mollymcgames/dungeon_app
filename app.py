@@ -19,22 +19,8 @@ from keras.layers import Layer
 
 from keras.initializers import Initializer
 
-# Data Loading
-def load_rooms_data():
-    room_data = np.load('rooms_dataset.npy')
-    X_train, X_test = room_data, room_data
-    X_train = X_train.astype(np.float32) / 255  # Normalize to [0, 1]
-    y_train, y_test = None, None
-    return X_train, y_train, X_test, y_test
-
-# Load room data
-X_train, y_train, X_test, y_test = load_rooms_data()
-
-# Data Reshape
-img_width  = X_train.shape[1]
-img_height = X_train.shape[2]
 num_channels = 1  # Assuming RGB images
-input_shape = (img_height, img_width, num_channels)
+input_shape = (16, 16, 1)
 
 latent_dim = 10
 # Encoder
