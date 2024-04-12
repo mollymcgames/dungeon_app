@@ -16,8 +16,11 @@ import json
 import tensorflow as tf
 import keras.backend as K
 from keras.layers import Layer
+from tensorflow import keras
+from tensorflow.keras import layers
 
 from keras.initializers import Initializer
+import random
 
 num_channels = 1  # Assuming RGB images
 input_shape = (16, 16, 1)
@@ -53,6 +56,46 @@ decoder = Model(decoder_input, x, name='decoder')
 
 # Apply the decoder to the latent sample
 z_decoded = decoder(z)
+
+
+# Define the PixelConvLayer class
+class PixelConvLayer(layers.Layer):
+    def __init__(self, filters, kernel_size, mask_type='B', **kwargs):
+        super().__init__(**kwargs)
+        self.mask_type = mask_type
+        self.conv = layers.Conv2D(filters, kernel_size, padding="same", activation="relu")
+
+    def build(self, input_shape):
+        self.conv.build(input_shape)
+        kernel_shape = tf.shape(self.conv.kernel)
+        self.mask = np.zeros(shape=kernel_shape)
+        self.mask[: kernel_shape[0] // 2, ...] = 1.0
+        self.mask[kernel_shape[0] // 2, : kernel_shape[1] // 2, ...] = 1.0
+        if self.mask_type == "B":
+            self.mask[kernel_shape[0] // 2, kernel_shape[1] // 2, ...] = 1.0
+
+    def call(self, inputs):
+        self.conv.kernel.assign(self.conv.kernel * self.mask)
+        return self.conv(inputs)
+
+
+class ResidualBlock(layers.Layer):
+    def __init__(self, filters, kernel_size, **kwargs):
+        super().__init__(**kwargs)
+        self.conv1 = layers.Conv2D(filters, 1, activation="relu")
+        self.pixel_conv = PixelConvLayer(filters, kernel_size)
+        # self.conv2 = layers.Conv2D(filters, 1, activation="relu")
+
+    def build(self, input_shape):
+        self.conv1.build(input_shape)
+        self.pixel_conv.build(input_shape)
+        # self.conv2.build(input_shape)
+
+    def call(self, inputs):
+        x = self.conv1(inputs)
+        x = self.pixel_conv(x)
+        # x = self.conv2(x)
+        return layers.add([inputs, x])
 
 
 # Define the custom layer class
@@ -119,7 +162,42 @@ def generate_dungeon_data():
         generated_dungeon_json.append(row.tolist())
 
     # Return the JSON-like representation of the generated dungeon
-    return jsonify(generated_dungeon_json)    
+    return jsonify(generated_dungeon_json)
+
+@app.route('/dungeon_pixelcnn', methods=['GET'])
+def generate_dungeon_pixelcnn():
+    # Load the pixelcnn_model model with custom objects
+    loaded_model = tf.keras.models.load_model('pixelcnn_model.h5', custom_objects={'PixelConvLayer': PixelConvLayer, 'ResidualBlock': ResidualBlock})
+
+    # Load dungeon data from numpy file
+    data = np.load('dungeons_dataset.npy')
+
+    # Reshape the data to match the desired shape (8, 8, 1)
+    data = data.reshape(-1, 8, 8, 1)
+
+    # Scale the pixel values to [0, 1] range
+    data = data.astype("float32") / 1.0  # Assuming values are already either 0 or 1
+
+    # Randomly select a dungeon from the dataset
+    random_index = random.randint(0, len(data) - 1)
+    random_dungeon = data[random_index:random_index + 1]
+
+    # Generate a single dungeon using the loaded model
+    generated_dungeon = loaded_model.predict(random_dungeon)
+
+    # Apply threshold to binarize the sample
+    threshold = 0.5
+    binarized_dungeon = (generated_dungeon > threshold).astype(int)
+
+    # Reshape binarized dungeon to match desired format (if needed)
+    reshaped_dungeon = binarized_dungeon.reshape(8, 8)
+
+    # Convert the generated dungeon to a JSON-like array
+    generated_dungeon_json = reshaped_dungeon.tolist()
+
+    # Return the JSON-like representation of the generated dungeon
+    return jsonify(generated_dungeon_json)
+
 
 
 @app.route('/get_dungeon_data', methods=['GET'])
