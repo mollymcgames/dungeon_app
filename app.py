@@ -4,6 +4,7 @@ tf.enable_eager_execution()
 
 from flask import Flask, jsonify, request
 import numpy as np
+import array
 
 from keras.models import load_model
 import keras
@@ -267,27 +268,39 @@ def generate_room_vae():
 # Define a route to generate room data using GAN
 @app.route('/room_gan', methods=['GET'])
 def generate_room_gan():
-
     # Generate random noise for input to the generator part of the GAN
     noise = tf.random.normal((1, input_size))
 
     # Generate a single room sample using the generator part of the GAN model
     generated_room = loaded_room_gan_model.layers[1](noise)
 
-    # Apply threshold to binarize the sample
-    binarized_room = (generated_room > threshold).numpy().astype(int)
+    # Convert the generated room to a NumPy array to access its shape
+    generated_room_numpy = generated_room.numpy()
 
-    # Reshape binarized room to match desired format (if needed)
-    reshaped_room = binarized_room.reshape(8, 8)
+    # Get the grid size
+    grid_size = int(np.sqrt(generated_room_numpy.shape[1]))
 
-    # Convert the generated room to a JSON-like array in the desired format
-    generated_room_json = []
+    # Reshape the generated room to match a square grid (assuming it represents an image)
+    generated_room_reshaped = tf.reshape(generated_room, (-1, grid_size, grid_size))
 
-    for row in reshaped_room:
-        generated_room_json.append(row.tolist())
+    # Rounding
+    # Multiply the values by 1000 to move the decimal point
+    generated_room_scaled = generated_room_reshaped * 1000
+
+    # Apply the custom rounding function to the generated room
+    rounded_generated_room_custom = np.vectorize(custom_round)(generated_room_scaled)
+
+    # Convert the rounded room to a JSON-like array
+    rounded_generated_room_json = []
+
+    for row in rounded_generated_room_custom[0]:
+        rounded_generated_room_json.append(row.tolist())
 
     # Return the JSON-like representation of the generated room
-    return jsonify(generated_room_json)
+    return jsonify(rounded_generated_room_json)
+
+
+
 
 # Define your custom rounding function
 def custom_round(value):
