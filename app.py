@@ -136,13 +136,24 @@ threshold = 0.5
 
 app = Flask(__name__)
 
+# Load the VAE room model
+loaded_room_vae_model = tf.keras.models.load_model("room_vae_model.h5", custom_objects={'CustomLayer': CustomLayer})
+
+# Load the GAN room model
+loaded_room_gan_model = tf.keras.models.load_model("room_gan_model.h5")
+
+# Get the roomdecoder model from the loaded VAE model
+room_decoder_model = loaded_room_vae_model.get_layer('decoder')
+
+print("Loaded room model!")
 
 # Define a route to generate dungeon data
-@app.route('/gan_dungeon', methods=['GET'])
-def generate_dungeon_data():
+@app.route('/dungeon_gan', methods=['GET'])
+def generate_dungeon_gan():
 
     # Load the Keras model
-    loaded_gan_model = tf.keras.models.load_model("gan_model.h5")
+    loaded_gan_model = tf.keras.models.load_model("dungeon_gan_model.h5")
+    
     # Generate random noise for input to the generator part of the GAN
     noise = tf.random.normal((1, input_size))
 
@@ -167,7 +178,7 @@ def generate_dungeon_data():
 @app.route('/dungeon_pixelcnn', methods=['GET'])
 def generate_dungeon_pixelcnn():
     # Load the pixelcnn_model model with custom objects
-    loaded_model = tf.keras.models.load_model('pixelcnn_model.h5', custom_objects={'PixelConvLayer': PixelConvLayer, 'ResidualBlock': ResidualBlock})
+    loaded_model = tf.keras.models.load_model('dungeon_pixelcnn_model.h5', custom_objects={'PixelConvLayer': PixelConvLayer, 'ResidualBlock': ResidualBlock})
 
     # Load dungeon data from numpy file
     data = np.load('dungeons_dataset.npy')
@@ -198,8 +209,6 @@ def generate_dungeon_pixelcnn():
     # Return the JSON-like representation of the generated dungeon
     return jsonify(generated_dungeon_json)
 
-
-
 @app.route('/get_dungeon_data', methods=['GET'])
 def get_dungeon_data():
 
@@ -227,22 +236,15 @@ def get_room_data():
 
     return jsonify(room_list)
 
-
 # Define a route to generate room data using VAE
-@app.route('/vae_room', methods=['GET'])
-def generate_vae_room():
-    # Load the VAE model
-    loaded_vae_model = tf.keras.models.load_model("vae_model.h5", custom_objects={'CustomLayer': CustomLayer})
-
-    # Get the decoder model from the loaded VAE model
-    decoder_model = loaded_vae_model.get_layer('decoder')
-
+@app.route('/room_vae', methods=['GET'])
+def generate_room_vae():
     # Generate a random latent vector for input to the decoder part of the VAE
     latent_dim = 10
     random_latent_vector = np.random.normal(size=(1, latent_dim)).astype(np.float32)  # Convert to float32
 
     # Generate a single room sample using the decoder part of the VAE model
-    generated_room = decoder_model.predict(random_latent_vector)
+    generated_room = room_decoder_model.predict(random_latent_vector)
 
     # Multiply the values by 1000 to move the decimal point
     generated_room_scaled = generated_room * 1000
@@ -262,26 +264,53 @@ def generate_vae_room():
     # Return the JSON-like representation of the generated room
     return jsonify(rounded_generated_room_json)
 
+# Define a route to generate room data using GAN
+@app.route('/room_gan', methods=['GET'])
+def generate_room_gan():
+
+    # Generate random noise for input to the generator part of the GAN
+    noise = tf.random.normal((1, input_size))
+
+    # Generate a single room sample using the generator part of the GAN model
+    generated_room = loaded_room_gan_model.layers[1](noise)
+
+    # Apply threshold to binarize the sample
+    binarized_room = (generated_room > threshold).numpy().astype(int)
+
+    # Reshape binarized room to match desired format (if needed)
+    reshaped_room = binarized_room.reshape(8, 8)
+
+    # Convert the generated room to a JSON-like array in the desired format
+    generated_room_json = []
+
+    for row in reshaped_room:
+        generated_room_json.append(row.tolist())
+
+    # Return the JSON-like representation of the generated room
+    return jsonify(generated_room_json)
+
 # Define your custom rounding function
 def custom_round(value):
-    if value < 0.5:
+    if value <= 0.5:
         return 0
-    elif value < 1.5:
-        return 1
-    elif value < 2.5:
+    elif value > 0.5 and value <= 1.5:
+        return 1        
+    elif value > 1.5 and value <= 2.5:
         return 2
-    elif value < 3.5:
-        return 3
-    elif value < 4.5:
+    elif value > 2.5 and value <= 3.5:
+        return 3        
+    elif value > 3.5 and value <= 4.5:
         return 4
-    elif value < 5.5:
-        return 5
-    elif value < 6.5:
+    elif value > 4.5 and value <= 5.5:
+        return 5        
+    elif value > 5.5 and value <= 6.5:
         return 6
-    elif value < 7.5:
-        return 7
+    elif value > 6.5 and value <= 7.5:
+        return 7  
+    elif value > 7.5 and value <= 8.5:
+        return 8              
     else:
-        return 8
+        return 0    
 
 
 if __name__ == '__main__':
