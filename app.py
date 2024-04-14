@@ -23,7 +23,7 @@ from tensorflow.keras import layers
 from keras.initializers import Initializer
 import random
 
-num_channels = 1  # Assuming RGB images
+num_channels = 1
 input_shape = (16, 16, 1)
 
 latent_dim = 10
@@ -85,17 +85,14 @@ class ResidualBlock(layers.Layer):
         super().__init__(**kwargs)
         self.conv1 = layers.Conv2D(filters, 1, activation="relu")
         self.pixel_conv = PixelConvLayer(filters, kernel_size)
-        # self.conv2 = layers.Conv2D(filters, 1, activation="relu")
 
     def build(self, input_shape):
         self.conv1.build(input_shape)
         self.pixel_conv.build(input_shape)
-        # self.conv2.build(input_shape)
 
     def call(self, inputs):
         x = self.conv1(inputs)
         x = self.pixel_conv(x)
-        # x = self.conv2(x)
         return layers.add([inputs, x])
 
 
@@ -125,8 +122,8 @@ custom_layer = CustomLayer()
 vae_loss = custom_layer([input_img, z_decoded])
 
 # Define and summarize the VAE model
-vae = Model(input_img, input_img, name='vae')  # Output should be the same as input for VAE
-vae.compile(optimizer='adam')  # No need to specify loss=None since we added the loss in the custom layer
+vae = Model(input_img, input_img, name='vae')
+vae.compile(optimizer='adam')
 
 
 # Define the input size
@@ -164,7 +161,7 @@ def generate_dungeon_gan():
     # Apply threshold to binarize the sample
     binarized_dungeon = (generated_dungeon > threshold).numpy().astype(int)
 
-    # Reshape binarized dungeon to match desired format (if needed)
+    # Reshape binarized dungeon to match desired format
     reshaped_dungeon = binarized_dungeon.reshape(8, 8)
 
     # Convert the generated dungeon to a JSON-like array in the desired format
@@ -283,8 +280,7 @@ def generate_room_gan():
     # Reshape the generated room to match a square grid (assuming it represents an image)
     generated_room_reshaped = tf.reshape(generated_room, (-1, grid_size, grid_size))
 
-    # Rounding
-    # Multiply the values by 1000 to move the decimal point
+    # Rounding - multiply the values by 1000 to move the decimal point
     generated_room_scaled = generated_room_reshaped * 1000
 
     # Apply the custom rounding function to the generated room
@@ -300,9 +296,7 @@ def generate_room_gan():
     return jsonify(rounded_generated_room_json)
 
 
-
-
-# Define your custom rounding function
+# Define the custom rounding function
 def custom_round(value):
     if value <= 0.5:
         return 0
@@ -327,5 +321,5 @@ def custom_round(value):
 
 
 if __name__ == '__main__':
-    # Run the app on the server's publicly available IP address, on port 8080
+    # Run the app on the server's available IP address, on port 8080
     app.run(host='0.0.0.0', port=8080)

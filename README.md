@@ -2,7 +2,7 @@
  Flask app
 
 
-# To run in the 
+# To run 
 `python3 -m venv dungeon_app`
 
 `source dungeon_app/bin/activate`
